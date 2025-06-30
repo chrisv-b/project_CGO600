@@ -1,15 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+import { Redis } from '@upstash/redis';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
-const TOKENS_PATH = path.join(process.cwd(), 'data/tokens.json');
-
-function readTokens() {
-  return JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
-}
-function writeTokens(tokens) {
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
-}
+const redis = Redis.fromEnv();
 
 module.exports = async (req, res) => {
   const authHeader = req.headers['authorization'];
@@ -26,13 +18,14 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Status is vereist' });
       return;
     }
-    const tokens = readTokens();
-    if (!tokens[id]) {
+    const tokenRaw = await redis.hget('tokens', id);
+    if (!tokenRaw) {
       res.status(404).json({ error: 'Token niet gevonden' });
       return;
     }
-    tokens[id].status = status;
-    writeTokens(tokens);
+    const token = JSON.parse(tokenRaw);
+    token.status = status;
+    await redis.hset('tokens', { [id]: JSON.stringify(token) });
     res.status(200).json({ id, status });
   } else {
     res.setHeader('Allow', 'PATCH');

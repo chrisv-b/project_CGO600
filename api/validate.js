@@ -1,15 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+import { Redis } from '@upstash/redis';
 const rateLimit = require('./rate-limit').default || require('./rate-limit');
 
-const TOKENS_PATH = path.join(process.cwd(), 'data/tokens.json');
-
-function readTokens() {
-  return JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
-}
-function writeTokens(tokens) {
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
-}
+const redis = Redis.fromEnv();
 
 module.exports = async (req, res) => {
   // Security headers
@@ -48,15 +40,14 @@ module.exports = async (req, res) => {
       });
     }
 
-    const tokens = readTokens();
-    const tokenData = tokens[code];
-
-    if (!tokenData) {
+    const tokenRaw = await redis.hget('tokens', code);
+    if (!tokenRaw) {
       return res.status(404).json({ 
         error: 'Activatiecode niet gevonden',
         success: false 
       });
     }
+    const tokenData = JSON.parse(tokenRaw);
 
     // Check token status
     if (tokenData.status === 'gebruikt') {
@@ -74,10 +65,10 @@ module.exports = async (req, res) => {
     }
 
     // Update status to 'in-gebruik' and add usage timestamp
-    tokens[code].status = 'in-gebruik';
-    tokens[code].in_gebruik_op = new Date().toISOString();
-    tokens[code].ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    writeTokens(tokens);
+    tokenData.status = 'in-gebruik';
+    tokenData.in_gebruik_op = new Date().toISOString();
+    tokenData.ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    await redis.hset('tokens', { [code]: JSON.stringify(tokenData) });
 
     res.status(200).json({
       success: true,

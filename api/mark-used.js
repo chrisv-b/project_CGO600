@@ -1,15 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+import { Redis } from '@upstash/redis';
 const rateLimit = require('./rate-limit').default || require('./rate-limit');
 
-const TOKENS_PATH = path.join(process.cwd(), 'data/tokens.json');
-
-function readTokens() {
-  return JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
-}
-function writeTokens(tokens) {
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
-}
+const redis = Redis.fromEnv();
 
 module.exports = async (req, res) => {
   // Security headers
@@ -56,16 +48,15 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Get token from file
-    const tokens = readTokens();
-    const tokenData = tokens[code];
-
-    if (!tokenData) {
+    // Get token from Redis
+    const tokenRaw = await redis.hget('tokens', code);
+    if (!tokenRaw) {
       return res.status(404).json({ 
         error: 'Activatiecode niet gevonden',
         success: false 
       });
     }
+    const tokenData = JSON.parse(tokenRaw);
 
     // Check if token is already used
     if (tokenData.status === 'gebruikt') {
@@ -76,10 +67,10 @@ module.exports = async (req, res) => {
     }
 
     // Mark token as used
-    tokens[code].status = 'gebruikt';
-    tokens[code].gebruikt_op = new Date().toISOString();
-    tokens[code].ip_gebruikt = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    writeTokens(tokens);
+    tokenData.status = 'gebruikt';
+    tokenData.gebruikt_op = new Date().toISOString();
+    tokenData.ip_gebruikt = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    await redis.hset('tokens', { [code]: JSON.stringify(tokenData) });
 
     // Logging
     console.log(`[${new Date().toISOString()}] Activatiecode gemarkeerd als gebruikt door ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);

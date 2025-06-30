@@ -1,16 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+import { Redis } from '@upstash/redis';
+import { v4 as uuidv4 } from 'uuid';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
-const TOKENS_PATH = path.join(process.cwd(), 'data/tokens.json');
-
-function readTokens() {
-  return JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
-}
-function writeTokens(tokens) {
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
-}
+const redis = Redis.fromEnv();
 
 module.exports = async (req, res) => {
   // Eenvoudige admin authenticatie
@@ -22,15 +14,14 @@ module.exports = async (req, res) => {
 
   if (req.method === 'GET') {
     // Haal alle tokens op
-    const tokens = readTokens();
-    const result = Object.entries(tokens).map(([id, data]) => ({ id, ...data }));
+    const tokens = await redis.hgetall('tokens');
+    const result = Object.entries(tokens || {}).map(([id, data]) => ({ id, ...JSON.parse(data) }));
     res.status(200).json(result);
   } else if (req.method === 'POST') {
     // Maak een nieuwe token aan
     const code = uuidv4();
-    const tokens = readTokens();
-    tokens[code] = { status: 'nieuw', aangemaakt_op: new Date().toISOString() };
-    writeTokens(tokens);
+    const data = { status: 'nieuw', aangemaakt_op: new Date().toISOString() };
+    await redis.hset('tokens', { [code]: JSON.stringify(data) });
     res.status(201).json({ id: code, status: 'nieuw' });
   } else {
     res.setHeader('Allow', 'GET, POST');
