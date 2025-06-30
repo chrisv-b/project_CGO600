@@ -1,9 +1,12 @@
 const { db } = require('../lib/firebase');
-import rateLimit from "./rate-limit";
+const rateLimit = require('./rate-limit').default || require('./rate-limit');
 
 module.exports = async (req, res) => {
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
   // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', 'https://jouw-domein.nl');
+  res.setHeader('Access-Control-Allow-Origin', 'TENWAYS.LINKPC.NET');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -14,6 +17,14 @@ module.exports = async (req, res) => {
 
   // Rate limiting
   if (!rateLimit(req, res)) return;
+
+  // Echte authenticatie: check op API-token
+  const authHeader = req.headers['authorization'];
+  const token = process.env.INSTALL_TOKEN;
+  if (!authHeader || authHeader !== `Bearer ${token}`) {
+    res.status(403).json({ error: 'Niet geautoriseerd' });
+    return;
+  }
 
   try {
     const { code } = req.query;
@@ -63,9 +74,12 @@ module.exports = async (req, res) => {
       ip_gebruikt: req.headers['x-forwarded-for'] || req.connection.remoteAddress
     });
 
-    res.status(200).json({
-      success: true,
-      message: 'Activatiecode succesvol gemarkeerd als gebruikt'
+    // Logging
+    console.log(`[${new Date().toISOString()}] Activatiecode gemarkeerd als gebruikt door ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);
+
+    res.status(200).json({ 
+      message: 'Activatiecode gemarkeerd als gebruikt',
+      success: true 
     });
 
   } catch (error) {

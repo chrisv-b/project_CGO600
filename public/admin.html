@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Beheer Dashboard - CGO600 Flash</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f0f0f0; }
+    button { padding: 6px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Beheer Dashboard</h1>
+  <button onclick="createToken()">Nieuwe activatiecode aanmaken</button>
+  <button onclick="logout()">Uitloggen</button>
+  <table id="tokensTable">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Status</th>
+        <th>Aangemaakt op</th>
+        <th>Actie</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    const ADMIN_TOKEN = localStorage.getItem('ADMIN_TOKEN') || prompt('Voer admin token in:');
+    if (!localStorage.getItem('ADMIN_TOKEN')) localStorage.setItem('ADMIN_TOKEN', ADMIN_TOKEN);
+    function logout() {
+      localStorage.removeItem('ADMIN_TOKEN');
+      location.reload();
+    }
+    async function fetchTokens() {
+      const res = await fetch('/api/admin/tokens', { headers: { Authorization: 'Bearer ' + ADMIN_TOKEN } });
+      if (res.status === 403) {
+        alert('Ongeldige admin token!');
+        logout();
+        return;
+      }
+      const tokens = await res.json();
+      const tbody = document.querySelector('#tokensTable tbody');
+      tbody.innerHTML = '';
+      tokens.forEach(token => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${token.id}</td>
+          <td>${token.status}</td>
+          <td>${token.aangemaakt_op ? new Date(token.aangemaakt_op._seconds * 1000).toLocaleString() : ''}</td>
+          <td>
+            <button onclick="resetToken('${token.id}')">Reset</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    async function createToken() {
+      const res = await fetch('/api/admin/tokens', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + ADMIN_TOKEN }
+      });
+      if (res.ok) fetchTokens();
+      else alert('Fout bij aanmaken token');
+    }
+    async function resetToken(id) {
+      const res = await fetch(`/api/admin/tokens/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + ADMIN_TOKEN
+        },
+        body: JSON.stringify({ status: 'nieuw' })
+      });
+      if (res.ok) fetchTokens();
+      else alert('Fout bij resetten token');
+    }
+    fetchTokens();
+  </script>
+</body>
+</html> 

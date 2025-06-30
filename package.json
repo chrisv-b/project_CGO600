@@ -9,8 +9,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "firebase-admin": "^11.11.0",
-    "cors": "^2.8.5"
+    "firebase-admin": "^11.11.0"
   },
   "devDependencies": {
     "vercel": "^32.5.0"
