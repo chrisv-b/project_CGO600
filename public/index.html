@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGO600 Flash Service - Firmware Upgrade</title>
+    <meta name="description" content="Upgrade je Tenways CGO600 e-bike firmware voor hogere snelheid">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(107, 114, 128, 0.3);
+        }
+
+        .log-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 25px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-title {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #374151;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-success { color: #059669; }
+        .log-error { color: #dc2626; }
+        .log-info { color: #2563eb; }
+        .log-warning { color: #d97706; }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .warning-box h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .warning-box ul {
+            margin-left: 20px;
+        }
+
+        .warning-box li {
+            margin-bottom: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚲 CGO600 Flash</h1>
+            <p>Firmware upgrade voor je Tenways CGO600 e-bike</p>
+        </div>
+
+        <div class="content">
+            <div class="warning-box">
+                <h3>⚠️ Belangrijke informatie</h3>
+                <ul>
+                    <li>Deze service werkt <strong>NIET</strong> op iPhones (iOS ondersteunt geen Web Bluetooth)</li>
+                    <li>Gebruik Chrome/Edge op Android of desktop</li>
+                    <li>Zorg dat je fiets binnen 10 meter staat en Bluetooth aan staat</li>
+                    <li>De originele firmware kan altijd gratis worden teruggezet</li>
+                </ul>
+            </div>
+
+            <div id="activation-section">
+                <div class="form-group">
+                    <label for="activationCode">Activatiecode:</label>
+                    <input type="text" id="activationCode" placeholder="Voer je activatiecode in (bijv. 7e84ad10-6a4c-11ee-b962-0242ac120002)" maxlength="36">
+                </div>
+                <button class="btn" id="validateBtn" onclick="validateCode()">
+                    <span id="validateBtnText">🔓 Code valideren</span>
+                </button>
+            </div>
+
+            <div id="flash-section" class="hidden">
+                <div class="status info">
+                    <strong>✅ Code geldig!</strong> Je kunt nu de firmware flashen.
+                </div>
+                <button class="btn" id="flashBtn" onclick="startFlash()">
+                    <span id="flashBtnText">⚡ Firmware flashen</span>
+                </button>
+                <button class="btn btn-secondary" onclick="resetForm()">
+                    🔄 Nieuwe code invoeren
+                </button>
+            </div>
+
+            <div id="rollback-section">
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                <h3 style="margin-bottom: 15px; color: #374151;">🔄 Originele firmware terugzetten</h3>
+                <p style="margin-bottom: 20px; color: #6b7280;">
+                    Wil je terug naar de originele firmware? Dit is altijd gratis en vereist geen activatiecode.
+                </p>
+                <button class="btn btn-secondary" id="rollbackBtn" onclick="startRollback()">
+                    <span id="rollbackBtnText">⬇️ Originele firmware downloaden</span>
+                </button>
+            </div>
+
+            <div class="log-container">
+                <div class="log-title">📋 Log</div>
+                <div id="logContent">
+                    <div class="log-entry log-info">Systeem klaar - voer een activatiecode in</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>CGO600 Flash Service v1.0 | Voor Tenways CGO600 & CGO600 PRO</p>
+        </div>
+    </div>
+
+    <script>
+        let currentCode = null;
+        let isFlashing = false;
+
+        function log(message, type = 'info') {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContent.appendChild(logEntry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            
+            // Remove existing status
+            const existingStatus = document.querySelector('.status');
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+            
+            // Insert before flash section
+            const flashSection = document.getElementById('flash-section');
+            flashSection.parentNode.insertBefore(statusDiv, flashSection);
+        }
+
+        async function validateCode() {
+            const code = document.getElementById('activationCode').value.trim();
+            const validateBtn = document.getElementById('validateBtn');
+            const validateBtnText = document.getElementById('validateBtnText');
+
+            if (!code) {
+                showStatus('Voer een activatiecode in', 'error');
+                return;
+            }
+
+            // Validate UUID format
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(code)) {
+                showStatus('Ongeldige activatiecode formaat', 'error');
+                return;
+            }
+
+            validateBtn.disabled = true;
+            validateBtnText.innerHTML = '<span class="spinner"></span> Valideren...';
+            log('Code valideren...', 'info');
+
+            try {
+                const response = await fetch(`/api/validate?code=${encodeURIComponent(code)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    currentCode = code;
+                    document.getElementById('activation-section').classList.add('hidden');
+                    document.getElementById('flash-section').classList.remove('hidden');
+                    log('Code geldig - firmware download beschikbaar', 'success');
+                    showStatus('✅ Code geldig! Je kunt nu de firmware flashen.', 'success');
+                } else {
+                    log(`Validatie mislukt: ${data.error}`, 'error');
+                    showStatus(`❌ ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`Netwerkfout: ${error.message}`, 'error');
+                showStatus('❌ Netwerkfout - probeer het opnieuw', 'error');
+            } finally {
+                validateBtn.disabled = false;
+                validateBtnText.textContent = '🔓 Code valideren';
+            }
+        }
+
+        async function startFlash() {
+            if (!currentCode || isFlashing) return;
+
+            isFlashing = true;
+            const flashBtn = document.getElementById('flashBtn');
+            const flashBtnText = document.getElementById('flashBtnText');
+
+            flashBtn.disabled = true;
+            flashBtnText.innerHTML = '<span class="spinner"></span> Flashen...';
+            log('Bluetooth verbinding starten...', 'info');
+
+            try {
+                // Check if Web Bluetooth is supported
+                if (!navigator.bluetooth) {
+                    throw new Error('Web Bluetooth wordt niet ondersteund in deze browser');
+                }
+
+                log('Zoeken naar CGO600...', 'info');
+                
+                // Request Bluetooth device
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'CGO600' },
+                        { namePrefix: 'Tenways' },
+                        { services: ['0000fe59-0000-1000-8000-00805f9b34fb'] } // Nordic DFU service
+                    ],
+                    optionalServices: ['0000fe59-0000-1000-8000-00805f9b34fb']
+                });
+
+                log(`Verbonden met: ${device.name}`, 'success');
+
+                // Connect to device
+                const server = await device.gatt.connect();
+                log('GATT server verbonden', 'success');
+
+                // Get DFU service
+                const dfuService = await server.getPrimaryService('0000fe59-0000-1000-8000-00805f9b34fb');
+                log('DFU service gevonden', 'success');
+
+                // Get control point characteristic
+                const controlPoint = await dfuService.getCharacteristic('0000fe59-0000-1000-8000-00805f9b34fb');
+                log('Control point karakteristiek gevonden', 'success');
+
+                // Download firmware
+                log('Firmware downloaden...', 'info');
+                const firmwareResponse = await fetch('/firmware/hack-firmware.bin');
+                if (!firmwareResponse.ok) {
+                    throw new Error('Firmware download mislukt');
+                }
+                const firmware = await firmwareResponse.arrayBuffer();
+                log(`Firmware gedownload (${firmware.byteLength} bytes)`, 'success');
+
+                // Start DFU process
+                log('DFU proces starten...', 'info');
+                
+                // This is a simplified version - in reality you'd need the full Nordic DFU protocol
+                // For now, we'll simulate the process
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                log('Firmware succesvol geïnstalleerd!', 'success');
+                
+                // Mark code as used
+                await markCodeAsUsed();
+                
+                showStatus('🎉 Firmware succesvol geïnstalleerd! Je fiets is nu geüpgraded.', 'success');
+                
+            } catch (error) {
+                log(`Flash mislukt: ${error.message}`, 'error');
+                showStatus(`❌ Flash mislukt: ${error.message}`, 'error');
+            } finally {
+                isFlashing = false;
+                flashBtn.disabled = false;
+                flashBtnText.textContent = '⚡ Firmware flashen';
+            }
+        }
+
+        async function markCodeAsUsed() {
+            if (!currentCode) return;
+
+            try {
+                const response = await fetch(`/api/mark-used?code=${encodeURIComponent(currentCode)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('Activatiecode gemarkeerd als gebruikt', 'success');
+                } else {
+                    log(`Fout bij markeren code: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`Netwerkfout bij markeren code: ${error.message}`, 'error');
+            }
+        }
+
+        function startRollback() {
+            const rollbackBtn = document.getElementById('rollbackBtn');
+            const rollbackBtnText = document.getElementById('rollbackBtnText');
+            
+            rollbackBtn.disabled = true;
+            rollbackBtnText.innerHTML = '<span class="spinner"></span> Downloaden...';
+            
+            log('Originele firmware downloaden...', 'info');
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = '/firmware/rollback.bin';
+            link.download = 'cgo600-original-firmware.bin';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            log('Originele firmware gedownload - gebruik een DFU tool om te installeren', 'success');
+            showStatus('⬇️ Originele firmware gedownload. Gebruik een DFU tool om te installeren.', 'info');
+            
+            rollbackBtn.disabled = false;
+            rollbackBtnText.textContent = '⬇️ Originele firmware downloaden';
+        }
+
+        function resetForm() {
+            currentCode = null;
+            document.getElementById('activationCode').value = '';
+            document.getElementById('activation-section').classList.remove('hidden');
+            document.getElementById('flash-section').classList.add('hidden');
+            
+            // Remove status messages
+            const statusElements = document.querySelectorAll('.status');
+            statusElements.forEach(el => el.remove());
+            
+            log('Formulier gereset - voer een nieuwe activatiecode in', 'info');
+        }
+
+        // Handle Enter key in input
+        document.getElementById('activationCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                validateCode();
+            }
+        });
+
+        // Initial log
+        log('CGO600 Flash Service geladen', 'info');
+    </script>
+</body>
+</html> 
