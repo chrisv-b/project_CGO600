@@ -324,37 +324,44 @@
                 return;
             }
 
-            // Validate UUID format
+            // Validate UUID format or short code
+            const codeUpper = code.toUpperCase();
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            if (!uuidRegex.test(code)) {
+            const shortCodeRegex = /^[A-HJ-NP-Z2-9]{8}$/i;
+            if (code.length < 8) {
+                showStatus('Code is te kort', 'error');
+                return;
+            }
+            if (code.length > 36) {
+                showStatus('Code is te lang', 'error');
+                return;
+            }
+            if (!uuidRegex.test(code) && !shortCodeRegex.test(codeUpper)) {
                 showStatus('Ongeldige activatiecode formaat', 'error');
                 return;
             }
-
             validateBtn.disabled = true;
             validateBtnText.innerHTML = '<span class="spinner"></span> Valideren...';
             log('Code valideren...', 'info');
-
             try {
-                const response = await fetch(`/api/validate?code=${encodeURIComponent(code)}`);
+                const response = await fetch(`/api/validate?code=${encodeURIComponent(codeUpper)}`);
                 const data = await response.json();
-
-                if (data.success) {
-                    currentCode = code;
+                if (response.ok && data.success) {
+                    showStatus('Activatiecode is geldig!', 'success');
                     document.getElementById('activation-section').classList.add('hidden');
                     document.getElementById('flash-section').classList.remove('hidden');
-                    log('Code geldig - firmware download beschikbaar', 'success');
-                    showStatus('✅ Code geldig! Je kunt nu de firmware flashen.', 'success');
+                    currentCode = codeUpper;
+                    log('Code gevalideerd: ' + codeUpper, 'success');
                 } else {
-                    log(`Validatie mislukt: ${data.error}`, 'error');
-                    showStatus(`❌ ${data.error}`, 'error');
+                    showStatus('Validatie mislukt: ' + (data.error || 'Onbekende fout'), 'error');
+                    log('Validatie mislukt: ' + (data.error || 'Onbekende fout'), 'error');
                 }
-            } catch (error) {
-                log(`Netwerkfout: ${error.message}`, 'error');
-                showStatus('❌ Netwerkfout - probeer het opnieuw', 'error');
+            } catch (e) {
+                showStatus('Serverfout bij valideren', 'error');
+                log('Serverfout bij valideren', 'error');
             } finally {
                 validateBtn.disabled = false;
-                validateBtnText.textContent = '🔓 Code valideren';
+                validateBtnText.innerHTML = '🔓 Code valideren';
             }
         }
 

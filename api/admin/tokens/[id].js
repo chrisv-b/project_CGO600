@@ -31,7 +31,13 @@ module.exports = async (req, res) => {
       res.status(404).json({ error: 'Token niet gevonden' });
       return;
     }
-    const token = JSON.parse(tokenRaw);
+    let token;
+    try {
+      token = JSON.parse(tokenRaw);
+    } catch {
+      res.status(500).json({ error: 'Corrupt token data' });
+      return;
+    }
     token.status = status;
     await redis.hset('tokens', { [id]: JSON.stringify(token) });
     res.status(200).json({ id, status });

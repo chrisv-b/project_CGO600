@@ -32,7 +32,13 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') {
     // Haal alle tokens op
     const tokens = await redis.hgetall('tokens');
-    const result = Object.entries(tokens || {}).map(([id, data]) => ({ id, ...JSON.parse(data) }));
+    const result = Object.entries(tokens || {}).map(([id, data]) => {
+      try {
+        return { id, ...JSON.parse(data) };
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
     res.status(200).json(result);
   } else if (req.method === 'POST') {
     // Maak een nieuwe token aan

@@ -40,19 +40,30 @@
         logout();
         return;
       }
+      if (!res.ok) {
+        alert('Fout bij ophalen tokens: ' + res.status);
+        return;
+      }
       const tokens = await res.json();
       const tbody = document.querySelector('#tokensTable tbody');
       tbody.innerHTML = '';
       tokens.forEach(token => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${token.id}</td>
-          <td>${token.status}</td>
-          <td>${token.aangemaakt_op ? new Date(token.aangemaakt_op).toLocaleString() : ''}</td>
-          <td>
-            <button onclick="resetToken('${token.id}')">Reset</button>
-          </td>
-        `;
+        if (token.corrupt) {
+          tr.innerHTML = `
+            <td colspan="4" style="color:red;">Corrupt token (${token.id}) <button onclick="deleteToken('${token.id}')">Verwijder</button></td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td>${token.id}</td>
+            <td>${token.status}</td>
+            <td>${token.aangemaakt_op ? new Date(token.aangemaakt_op).toLocaleString() : ''}</td>
+            <td>
+              <button onclick="resetToken('${token.id}')">Reset</button>
+              <button onclick="deleteToken('${token.id}')">Verwijder</button>
+            </td>
+          `;
+        }
         tbody.appendChild(tr);
       });
     }
@@ -62,7 +73,7 @@
         headers: { Authorization: 'Bearer ' + ADMIN_TOKEN }
       });
       if (res.ok) fetchTokens();
-      else alert('Fout bij aanmaken token');
+      else alert('Fout bij aanmaken token: ' + res.status);
     }
     async function resetToken(id) {
       const res = await fetch(`/api/admin/tokens/${id}`, {
@@ -74,7 +85,20 @@
         body: JSON.stringify({ status: 'nieuw' })
       });
       if (res.ok) fetchTokens();
-      else alert('Fout bij resetten token');
+      else alert('Fout bij resetten token: ' + res.status);
+    }
+    async function deleteToken(id) {
+      if (!confirm('Weet je zeker dat je deze token wilt verwijderen?')) return;
+      const res = await fetch('/api/admin/tokens', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + ADMIN_TOKEN
+        },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) fetchTokens();
+      else alert('Fout bij verwijderen token: ' + res.status);
     }
     fetchTokens();
   </script>

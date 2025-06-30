@@ -31,9 +31,10 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Check if code is valid UUID format
+    // Check if code is valid UUID format of 8-char code
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(code)) {
+    const shortCodeRegex = /^[A-HJ-NP-Z2-9]{8}$/i;
+    if (!uuidRegex.test(code) && !shortCodeRegex.test(code)) {
       return res.status(400).json({ 
         error: 'Ongeldige activatiecode formaat',
         success: false 
@@ -47,7 +48,12 @@ module.exports = async (req, res) => {
         success: false 
       });
     }
-    const tokenData = JSON.parse(tokenRaw);
+    let tokenData;
+    try {
+      tokenData = JSON.parse(tokenRaw);
+    } catch {
+      return res.status(500).json({ error: 'Corrupt token data', success: false });
+    }
 
     // Check token status
     if (tokenData.status === 'gebruikt') {
