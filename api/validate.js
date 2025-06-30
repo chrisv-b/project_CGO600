@@ -1,5 +1,15 @@
-const { db } = require('../lib/firebase');
+const fs = require('fs');
+const path = require('path');
 const rateLimit = require('./rate-limit').default || require('./rate-limit');
+
+const TOKENS_PATH = path.join(process.cwd(), 'data/tokens.json');
+
+function readTokens() {
+  return JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
+}
+function writeTokens(tokens) {
+  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+}
 
 module.exports = async (req, res) => {
   // Security headers
@@ -38,18 +48,15 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Get token from Firestore
-    const tokenRef = db.collection('tokens').doc(code);
-    const tokenDoc = await tokenRef.get();
+    const tokens = readTokens();
+    const tokenData = tokens[code];
 
-    if (!tokenDoc.exists) {
+    if (!tokenData) {
       return res.status(404).json({ 
         error: 'Activatiecode niet gevonden',
         success: false 
       });
     }
-
-    const tokenData = tokenDoc.data();
 
     // Check token status
     if (tokenData.status === 'gebruikt') {
@@ -67,11 +74,10 @@ module.exports = async (req, res) => {
     }
 
     // Update status to 'in-gebruik' and add usage timestamp
-    await tokenRef.update({
-      status: 'in-gebruik',
-      in_gebruik_op: new Date(),
-      ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress
-    });
+    tokens[code].status = 'in-gebruik';
+    tokens[code].in_gebruik_op = new Date().toISOString();
+    tokens[code].ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    writeTokens(tokens);
 
     res.status(200).json({
       success: true,

@@ -48,7 +48,7 @@
         tr.innerHTML = `
           <td>${token.id}</td>
           <td>${token.status}</td>
-          <td>${token.aangemaakt_op ? new Date(token.aangemaakt_op._seconds * 1000).toLocaleString() : ''}</td>
+          <td>${token.aangemaakt_op ? new Date(token.aangemaakt_op).toLocaleString() : ''}</td>
           <td>
             <button onclick="resetToken('${token.id}')">Reset</button>
           </td>

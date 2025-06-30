@@ -1,6 +1,15 @@
-const { db } = require('../../../lib/firebase');
+const fs = require('fs');
+const path = require('path');
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+const TOKENS_PATH = path.join(process.cwd(), 'data/tokens.json');
+
+function readTokens() {
+  return JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
+}
+function writeTokens(tokens) {
+  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+}
 
 module.exports = async (req, res) => {
   const authHeader = req.headers['authorization'];
@@ -17,7 +26,13 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Status is vereist' });
       return;
     }
-    await db.collection('tokens').doc(id).update({ status });
+    const tokens = readTokens();
+    if (!tokens[id]) {
+      res.status(404).json({ error: 'Token niet gevonden' });
+      return;
+    }
+    tokens[id].status = status;
+    writeTokens(tokens);
     res.status(200).json({ id, status });
   } else {
     res.setHeader('Allow', 'PATCH');
